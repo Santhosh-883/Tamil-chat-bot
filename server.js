@@ -82,10 +82,15 @@ app.use(session({
     maxAge: 86400000 // 1 day in milliseconds
   }
 }));
-
-// Authentication middleware (disabled for demo)
+// Authentication middleware
 const requireAuth = (req, res, next) => {
-  // Demo: allow all requests through
+  if (!req.session.userId) {
+    // For API requests, send an error. For page loads, you might redirect.
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    return res.redirect('/login');
+  }
   next();
 };
 
