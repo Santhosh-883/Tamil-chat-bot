@@ -1,18 +1,20 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const sqlite3 = require('sqlite3').verbose();
-const SQLiteStore = require('connect-sqlite3')(session);
+// Postgres will be used for persistent storage on Render.com
 const path = require('path');
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const app = express();
 
 // Database setup
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: process.env.NODE_ENV === 'production' ? '/tmp/chatbot.db' : './chatbot.db',
-  logging: false
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  logging: false,
+  dialectOptions: {
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  }
 });
 
 // Models
@@ -72,11 +74,6 @@ app.use(express.static('public'));
 
 // Session configuration
 app.use(session({
-  store: new SQLiteStore({
-    db: process.env.NODE_ENV === 'production' ? '/tmp/sessions.db' : 'sessions.db',
-    dir: './',
-    table: 'sessions'
-  }),
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,

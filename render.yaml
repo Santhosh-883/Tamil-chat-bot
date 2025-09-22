@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tamil-chatbot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tamil-chatbot-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+    autoDeploy: true
+    rootDir: .
+databases:
+  - name: tamil-chatbot-db
+    plan: free
+    databaseName: tamilchatbot
+    user: tamilchatbot_user
+    ipAllowList: []
