@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>தமிழ் சாட்பாட் - Tamil Chatbot</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .background-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      z-index: -1000;
+      object-fit: cover;
+    }
+    .video-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      z-index: -999;
+    }
+    .typing-indicator span {
+      animation: pulse 1.5s infinite;
+    }
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.5;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    .mic-listening {
+      background-color: #ef4444;
+      animation: listening-pulse 1.5s infinite;
+    }
+    @keyframes listening-pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .speaker-icon svg {
+        transition: transform 0.2s ease-in-out;
+    }
+    .speaker-icon.playing svg {
+        transform: scale(1.1);
+        color: #4f46e5;
+    }
+    .chat-spinner {
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        width: 1.5rem;
+        height: 1.5rem;
+        animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- Live Video Background -->
+  <video autoplay muted loop class="background-video">
+    <!-- Placeholder video. This could be replaced with a video of a Tamil landscape or temple. -->
+    <source src="bg.mp4" type="video/mp4">
+    உங்கள் உலாவியில் வீடியோ ஆதரவு இல்லை.
+  </video>
+  <div class="video-overlay"></div>
+
+  <!-- 🌟 Header -->
+  <header class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto flex justify-between items-center p-5">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">🤖 தமிழ் சாட்பாட்</h1>
+        <p class="text-sm opacity-90 mt-1">“கற்றது கைமண் அளவு, கல்லாதது உலகளவு”</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="username-display" class="bg-white/20 px-4 py-2 rounded-full text-sm shadow-md font-semibold"></span>
+        <button id="signout-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition">வெளியேறு</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 💬 Chat Section -->
+  <main class="flex-1 flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl overflow-hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl flex flex-col h-[80vh] sm:h-[70vh] border border-gray-200">
+      
+      <!-- Chat History -->
+      <div id="chat-history" class="flex-grow p-6 overflow-y-auto space-y-4">
+        <div class="flex justify-start">
+          <div class="bg-gray-200 text-gray-800 p-3 rounded-xl max-w-xs shadow-sm">
+            <p>வணக்கம்! நான் ஒரு தமிழ் சாட்பாட். உங்களுக்கு எப்படி உதவ முடியும்?</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Input -->
+      <div class="p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200">
+        <div class="flex items-center space-x-4">
+          <input type="text" id="user-input" placeholder="உங்கள் கேள்வியை இங்கு தட்டச்சு செய்யவும்..." class="flex-grow px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <button id="mic-btn" class="flex-shrink-0 bg-gray-300 text-gray-800 p-3 rounded-full shadow-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 transition transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2a4 4 0 014 4v6a4 4 0 01-4 4 4 4 0 01-4-4V6a4 4 0 014-4zm0 13a6 6 0 006-6V6a6 6 0 00-12 0v3a6 6 0 006 6zM5 12a1 1 0 01-2 0V6a9 9 0 0118 0v6a1 1 0 01-2 0V6a7 7 0 00-14 0v6z"/>
+            </svg>
+          </button>
+          <button id="send-btn" class="flex-shrink-0 bg-indigo-600 text-white p-3 rounded-full shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21.01L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="status-message" class="text-xs text-gray-500 text-center mt-2">
+          🤖 தமிழில் கேள்விகளை கேட்கவும் - பதில்கள் தமிழிலேயே வரும்
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 🌸 Footer -->
+  <footer class="bg-gray-100 border-t border-gray-300 text-center py-4 text-sm text-gray-600">
+    <p class="mb-1">“தமிழ் பேசும் தொழில்நுட்பம், புதிய சிந்தனைகளின் தொடக்கம்”</p>
+    <p>🚀 உருவாக்கியவர்: <span class="font-semibold">Brofessionalz @ Tamil Hackathon</span></p>
+  </footer>
+
+  <script>
+    // Fetch and display username
+    async function fetchAndDisplayUsername() {
+      try {
+        const res = await fetch('/api/me');
+        if (!res.ok) throw new Error('Not logged in');
+        const data = await res.json();
+        document.getElementById('username-display').textContent = data.username;
+      } catch {
+        document.getElementById('username-display').textContent = '';
+      }
+    }
+    fetchAndDisplayUsername();
+
+    // Signout logic
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/logout');
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/login.html';
+        }
+      } catch {
+        alert('வெளியேற முடியவில்லை.');
+      }
+    });
+
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const chatHistory = document.getElementById('chat-history');
+    const statusMessage = document.getElementById('status-message');
+
+    const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=AIzaSyDOR1aSpv3FkKOVxDGHxsbgAY50QnRDOPU";
+    const GEMINI_TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=AIzaSyDOR1aSpv3FkKOVxDGHxsbgAY50QnRDOPU";
+
+    let currentAudio = null;
+
+    const createMessage = (text, isUser = false, id = null) => {
+      const div = document.createElement('div');
+      div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+      if (id) div.id = id;
+
+      const bubble = document.createElement('div');
+      bubble.className = `p-3 rounded-xl max-w-xs shadow-sm ${isUser ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-800'}`;
+      
+      if (text === "loading") {
+        bubble.className += " flex justify-center items-center";
+        bubble.innerHTML = '<div class="chat-spinner"></div>';
+      } else {
+        // Use innerHTML to allow for bold text
+        bubble.innerHTML = text;
+        if (!isUser) {
+          const speakerIcon = document.createElement('div');
+          speakerIcon.className = 'speaker-icon ml-2 cursor-pointer text-gray-600 hover:text-gray-800 transition-colors';
+          speakerIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.43 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>`;
+          speakerIcon.addEventListener('click', () => {
+            // Use the text from the bubble for TTS, not the raw HTML
+            playAudio(bubble.textContent.trim(), speakerIcon);
+          });
+          bubble.appendChild(speakerIcon);
+        }
+      }
+
+      div.appendChild(bubble);
+      chatHistory.appendChild(div);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      return div;
+    };
+
+    const base64ToArrayBuffer = (base64) => {
+      const binaryString = window.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    };
+
+    const pcmToWav = (pcmData, sampleRate) => {
+      const pcm16 = new Int16Array(pcmData);
+      const dataLength = pcm16.length * 2;
+      const buffer = new ArrayBuffer(44 + dataLength);
+      const view = new DataView(buffer);
+
+      // WAV header
+      view.setUint32(0, 0x46464952, true); // "RIFF"
+      view.setUint32(4, 36 + dataLength, true); // file size
+      view.setUint32(8, 0x45564157, true); // "WAVE"
+      view.setUint32(12, 0x20746d66, true); // "fmt "
+      view.setUint32(16, 16, true); // sub-chunk size
+      view.setUint16(20, 1, true); // audio format (1 = PCM)
+      view.setUint16(22, 1, true); // number of channels
+      view.setUint32(24, sampleRate, true); // sample rate
+      view.setUint32(28, sampleRate * 2, true); // byte rate
+      view.setUint16(32, 2, true); // block align
+      view.setUint16(34, 16, true); // bits per sample
+      view.setUint32(36, 0x61746164, true); // "data"
+      view.setUint32(40, dataLength, true); // data size
+
+      // Write PCM data
+      let offset = 44;
+      for (let i = 0; i < pcm16.length; i++, offset += 2) {
+        view.setInt16(offset, pcm16[i], true);
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    };
+
+    const playAudio = async (text, iconElement) => {
+      if (currentAudio) {
+        if (currentAudio.paused) {
+          currentAudio.play();
+          iconElement.classList.add('playing');
+        } else {
+          currentAudio.pause();
+          iconElement.classList.remove('playing');
+        }
+        return;
+      }
+      
+      const payload = {
+        contents: [{ parts: [{ text: text }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: "Leda" }
+            }
+          }
+        },
+        model: "gemini-2.5-flash-preview-tts"
+      };
+
+      try {
+        const response = await fetch(GEMINI_TTS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`TTS API request failed with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const part = result?.candidates?.[0]?.content?.parts?.[0];
+        const audioData = part?.inlineData?.data;
+        const mimeType = part?.inlineData?.mimeType;
+
+        if (audioData && mimeType) {
+          const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+          const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+          const pcmData = base64ToArrayBuffer(audioData);
+          const wavBlob = pcmToWav(pcmData, sampleRate);
+          const audioUrl = URL.createObjectURL(wavBlob);
+
+          currentAudio = new Audio(audioUrl);
+          currentAudio.play();
+          iconElement.classList.add('playing');
+          
+          currentAudio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentAudio = null;
+            iconElement.classList.remove('playing');
+          };
+        } else {
+          console.error("No audio data found in response.");
+        }
+      } catch (err) {
+        console.error("TTS error:", err);
+        statusMessage.textContent = "ஆடியோவை இயக்க முடியவில்லை.";
+      }
+    };
+
+    const translateText = async (text) => {
+      try {
+        const prompt = `Translate the following text to Tamil. Do not add any extra commentary or labels. Only provide the translated text. Text to translate: "${text}"`;
+        const payload = { contents: [{ parts: [{ text: prompt }] }] };
+        const response = await fetch(GEMINI_TEXT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const translatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || text;
+        return translatedText;
+      } catch (err) {
+        console.error("Translation error:", err);
+        return text; // Return the original text on error
+      }
+    };
+
+    const getGeminiResponse = async (userMessage) => {
+      try {
+        // Updated prompt to get a JSON response with two fields
+        const prompt = `Analyze the user's message for its core topic and emotion.
+        Based on the emotion, generate a short, powerful Tamil punch dialogue or proverb.
+        Based on the core topic, generate a clear and concise main response in Tamil.
+        Provide the response in a JSON format with two fields: 'punchDialogue' and 'mainResponse'.
+        Example JSON output for a user message about happiness:
+        { "punchDialogue": "சந்தோஷம் என்பது ஒரு நோய், அது பரவிக்கொண்டே இருக்கட்டும்!", "mainResponse": "உங்கள் மகிழ்ச்சி குறித்து கேட்பதில் நானும் மகிழ்ச்சியடைகிறேன். மேலும் ஏதாவது உதவி வேண்டுமா?" }
+        User message: "${userMessage}"`;
+        
+        const payload = { 
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                      "punchDialogue": { "type": "STRING" },
+                      "mainResponse": { "type": "STRING" }
+                  },
+                  "propertyOrdering": ["punchDialogue", "mainResponse"]
+              }
+          }
+        };
+
+        const response = await fetch(GEMINI_TEXT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Gemini API request failed with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!jsonText) {
+          return "மன்னிக்கவும், ஒரு பிழை ஏற்பட்டது.";
+        }
+
+        const parsedResponse = JSON.parse(jsonText);
+        const punchDialogue = parsedResponse.punchDialogue;
+        const mainResponse = parsedResponse.mainResponse;
+        
+        // Combine the two parts for display
+        return `<b>${punchDialogue}</b><br><br>${mainResponse}`;
+        
+      } catch (err) {
+        console.error("Gemini error:", err);
+        return "மன்னிக்கவும், ஒரு பிழை ஏற்பட்டது."; // Sorry, an error occurred.
+      }
+    };
+
+    const sendMessage = async () => {
+      const msg = userInput.value.trim();
+      if (!msg) return;
+
+      // Translate the user's message to Tamil before displaying it
+      const userMsgInTamil = await translateText(msg);
+      createMessage(userMsgInTamil, true);
+      userInput.value = "";
+
+      const loading = createMessage("loading", false, "loading");
+      try {
+        const reply = await getGeminiResponse(userMsgInTamil);
+        loading.remove();
+        createMessage(reply);
+      } catch (err) {
+        loading.remove();
+        createMessage("மன்னிக்கவும், ஒரு பிழை ஏற்பட்டது."); // Sorry, an error occurred.
+      }
+    };
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // 🎙 Speech-to-Text Logic
+    let recognition;
+    let isListening = false; // Add a state variable to track listening status
+
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'ta-IN'; // Tamil language
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      micBtn.addEventListener("click", () => {
+        if (!isListening) {
+          try {
+            micBtn.classList.add('mic-listening');
+            statusMessage.textContent = "🎙 கேட்கிறது..."; // Listening...
+            recognition.start();
+            isListening = true; // Set the flag to true
+          } catch (error) {
+            console.error("Speech recognition error:", error);
+            statusMessage.textContent = "ஒரு பிழை ஏற்பட்டது. மைக்ரோஃபோன் அணுகலை சரிபார்க்கவும்."; // An error occurred. Check microphone access.
+            micBtn.classList.remove('mic-listening');
+            isListening = false; // Reset the flag
+          }
+        }
+      });
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        micBtn.classList.remove('mic-listening');
+        statusMessage.textContent = "🤖 தமிழில் கேள்விகளை கேட்கவும் - பதில்கள் தமிழிலேயே வரும்";
+        isListening = false; // Reset the flag
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        statusMessage.textContent = "ஒரு பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்."; // An error occurred. Please try again.
+        micBtn.classList.remove('mic-listening');
+        isListening = false; // Reset the flag
+      };
+
+      recognition.onend = () => {
+        micBtn.classList.remove('mic-listening');
+        statusMessage.textContent = "🤖 தமிழில் கேள்விகளை கேட்கவும் - பதில்கள் தமிழிலேயே வரும்";
+        isListening = false; // Reset the flag
+      };
+
+    } else {
+      micBtn.disabled = true;
+      micBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      statusMessage.textContent = "மன்னிக்கவும், இந்த உலாவி குரல் உள்ளீட்டை ஆதரிக்கவில்லை."; // Sorry, this browser does not support voice input.
+    }
+  </script>
+</body>
+</html>

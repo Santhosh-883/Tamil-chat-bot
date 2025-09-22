@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>புதிய கணக்கு - தமிழ் அரட்டை</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>புதிய கணக்கு உருவாக்கவும்</h1>
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="username">பயனர்பெயர்</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="email">மின்னஞ்சல்</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">கடவுச்சொல்</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="error-message" id="errorMessage"></div>
+            <button type="submit">உருவாக்கவும்</button>
+        </form>
+        <div class="toggle-form">
+            ஏற்கனவே கணக்கு உள்ளதா? <a href="/login.html">உள்நுழையவும்</a>
+        </div>
+    </div>
+    <script src="/js/auth.js"></script>
+</body>
+</html>
