@@ -193,6 +193,25 @@ app.get('/api/me', requireAuth, async (req, res) => {
   }
 });
 
+// Save chat message and response
+app.post('/api/chat/save', requireAuth, async (req, res) => {
+  try {
+    const { message, response } = req.body;
+    if (!message || !response) {
+      return res.status(400).json({ error: 'செய்தி மற்றும் பதில் தேவை' });
+    }
+    const chat = await ChatHistory.create({
+      message,
+      response,
+      UserId: req.session.userId
+    });
+    res.json({ success: true, chat });
+  } catch (error) {
+    console.error('Error saving chat:', error);
+    res.status(500).json({ error: 'செய்தியை சேமிக்க இயலவில்லை' });
+  }
+});
+
 // Protected route - example for chat history
 app.get('/api/chat/history', requireAuth, async (req, res) => {
   try {

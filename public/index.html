@@ -6,6 +6,7 @@
   <title>தமிழ் சாட்பாட் - Tamil Chatbot</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/sidebar.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body {
@@ -88,6 +89,11 @@
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
+  <!-- Sidebar for chat history -->
+  <aside id="sidebar">
+    <h2>வரலாறு</h2>
+    <ul id="history-list"></ul>
+  </aside>
   <!-- Live Video Background -->
   <video autoplay muted loop class="background-video">
     <!-- Placeholder video. This could be replaced with a video of a Tamil landscape or temple. -->
@@ -111,7 +117,7 @@
   </header>
 
   <!-- 💬 Chat Section -->
-  <main class="flex-1 flex items-center justify-center p-4">
+  <main class="flex-1 flex items-center justify-center p-4" style="margin-left:260px">
     <div class="w-full max-w-2xl overflow-hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl flex flex-col h-[80vh] sm:h-[70vh] border border-gray-200">
       
       <!-- Chat History -->
@@ -146,7 +152,7 @@
   </main>
 
   <!-- 🌸 Footer -->
-  <footer class="bg-gray-100 border-t border-gray-300 text-center py-4 text-sm text-gray-600">
+  <footer class="bg-black/20 backdrop-blur-sm text-white text-center py-4 text-sm fixed bottom-0 w-full">
     <p class="mb-1">“தமிழ் பேசும் தொழில்நுட்பம், புதிய சிந்தனைகளின் தொடக்கம்”</p>
     <p>🚀 உருவாக்கியவர்: <span class="font-semibold">Brofessionalz @ Tamil Hackathon</span></p>
   </footer>
@@ -164,6 +170,23 @@
       }
     }
     fetchAndDisplayUsername();
+
+    // Fetch and display chat history
+    async function fetchAndDisplayHistory() {
+      try {
+        const res = await fetch('/api/chat/history');
+        if (!res.ok) return;
+        const history = await res.json();
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        history.forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item.message.substring(0, 30) + '...';
+          list.appendChild(li);
+        });
+      } catch {}
+    }
+    fetchAndDisplayHistory();
 
     // Signout logic
     document.getElementById('signout-btn').addEventListener('click', async () => {
@@ -422,6 +445,15 @@
         const reply = await getGeminiResponse(userMsgInTamil);
         loading.remove();
         createMessage(reply);
+
+        // Save to history
+        await fetch('/api/chat/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMsgInTamil, response: reply })
+        });
+        fetchAndDisplayHistory(); // Refresh history list
+
       } catch (err) {
         loading.remove();
         createMessage("மன்னிக்கவும், ஒரு பிழை ஏற்பட்டது."); // Sorry, an error occurred.
